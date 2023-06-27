@@ -1,17 +1,18 @@
 import './App.css';
-import Amplife from 'aws-amplify'
-import awsconfig from './aws-exports'
-import {AmplifySigneOute, withAuthenticator} from '@aws-amplify/ui-react'
+import { withAuthenticator } from '@aws-amplify/ui-react';
 
-Amplife.configure(awsconfig)
 
-function App() {
+
+
+function App({signOut, user}) {
   return (
     <div className="App">
-      <header className="App-header">
-        <AmplifySigneOute/>
-        <h2>My App Content</h2>
-      </header>
+      <header>My header</header>
+      <main>
+        <h1>My content</h1>
+        {user.attributes.email}
+        <button onClick={signOut}>Sign Out</button>
+      </main>
     </div>
   );
 }
