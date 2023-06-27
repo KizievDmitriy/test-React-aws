@@ -1,12 +1,12 @@
 import './App.css';
-import { withAuthenticator, Button, Heading, Text, TextField, View } from '@aws-amplify/ui-react';
+import { withAuthenticator, Button, Heading, Text, TextField, View, Divider } from '@aws-amplify/ui-react';
 import React, { useEffect, useState } from 'react';
-import { API, graphqlOperation } from 'aws-amplify'
-import { createTodo } from './graphql/mutations'
-import { listTodos } from './graphql/queries'
+import { API, graphqlOperation } from 'aws-amplify';
+import { createTodo, updateTodo, deleteTodo} from './graphql/mutations';
+import { listTodos } from './graphql/queries';
 
 
-const initialState = { name: '', description: '' }
+const initialState = { name: ' ', description: ' ' }
 
 function App({signOut, user}) {
   const [formState, setFormState] = useState(initialState)
@@ -39,11 +39,41 @@ function App({signOut, user}) {
       console.log('error creating todo:', err)
     }
   }
-  
+  async function deleteTodos(todo) {
+    try {  
+      await API.graphql(graphqlOperation(deleteTodo, {input: { id: todo.id }}))      
+    } catch (err) {
+      console.log('error deleting todo:', err)
+    }
+  }
+
+  async function updateTodos(todo) {
+    try {  
+      await API.graphql(graphqlOperation(updateTodo, {input: { id: todo.id }}))      
+    } catch (err) {
+      console.log('error update todo:', err)
+    }
+  }
+
   return (
     <View style={styles.container}>
-    <Heading level={1}>Hello {user.attributes.email}</Heading>
+    <View style={styles.heading}>
+    <Heading level={1}>Hello <Text
+    variation="secondary"
+    as="span"
+    lineHeight="0.5em"
+    fontWeight={250}
+    fontSize=".5em"
+    fontStyle="normal"
+    textDecoration="none"
+    width="30vw"
+  >
+    {user.attributes.email}
+</Text></Heading>
+    
     <Button style={styles.button}onClick={signOut}>Sign out</Button>
+    </View>
+    <Divider orientation="horizontal" />
     <Heading level={2}>Amplify Todos</Heading>
     <TextField
       placeholder="Name"
@@ -58,11 +88,13 @@ function App({signOut, user}) {
       defaultValue={formState.description}
     />
     <Button style={styles.button} onClick={addTodo}>Create Todo</Button>
+    
     {
       todos.map((todo, index) => (
         <View key={todo.id ? todo.id : index} style={styles.todo}>
           <Text style={styles.todoName}>{todo.name}</Text>
           <Text style={styles.todoDescription}>{todo.description}</Text>
+          <Button style={styles.button} onClick={() => deleteTodos(todo)}>Delete Todo</Button>
         </View>
       ))
     }
@@ -71,12 +103,13 @@ function App({signOut, user}) {
 }
 
 const styles = {
-  container: { width: 400, margin: '0 auto', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: 20 },
-  todo: {  marginBottom: 15 },
+  heading: {display: 'flex', justifyContent: 'space-between', alignItems: 'center'},
+  container: { width: 600, margin: '0 auto', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: 20 },
+  todo: {  marginBottom: 15},
   input: { border: 'none', backgroundColor: '#ddd', marginBottom: 10, padding: 8, fontSize: 18 },
   todoName: { fontSize: 20, fontWeight: 'bold' },
   todoDescription: { marginBottom: 0 },
-  button: { backgroundColor: 'black', color: 'white', outline: 'none', fontSize: 18, padding: '12px 0px' }
+  button: { backgroundColor: 'black', color: 'white', outline: 'none', fontSize: 12, padding: '12px 6px' }
 }
 
 export default withAuthenticator(App);
