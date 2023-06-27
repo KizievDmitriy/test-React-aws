@@ -1,0 +1,5 @@
+{
+  "AppSyncApiName": "testreactaws",
+  "DynamoDBBillingMode": "PAY_PER_REQUEST",
+  "DynamoDBEnableServerSideEncryption": false
+}
