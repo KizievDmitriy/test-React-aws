@@ -2,7 +2,8 @@ import './App.css';
 import { withAuthenticator, Button, Heading, Text, TextField, View, Divider } from '@aws-amplify/ui-react';
 import React, { useEffect, useState } from 'react';
 import { API, graphqlOperation } from 'aws-amplify';
-import { createTodo, updateTodo, deleteTodo} from './graphql/mutations';
+import { onCreateTodo, onUpdateTodo, onDeleteTodo } from './graphql/subscriptions';
+import { createTodo, deleteTodo} from './graphql/mutations';
 import { listTodos } from './graphql/queries';
 
 
@@ -14,6 +15,36 @@ function App({signOut, user}) {
 
   useEffect(() => {
     fetchTodos()
+    const createSub = API.graphql(graphqlOperation(onCreateTodo)).subscribe({
+      next: ({ value }) => { setTodos((todos) => [...todos, value.data.onCreateTodo]) }
+    })
+
+    const updateSub = API.graphql(graphqlOperation(onUpdateTodo)).subscribe({
+      next: ({ value }) => {
+        setTodos(todos => {
+          const toUpdateIndex = todos.findIndex(item => item.id === value.data.onUpdateTodo.id)
+          if (toUpdateIndex === - 1) { // If the todo doesn't exist, treat it like an "add"
+            return [...todos, value.data.onUpdateTodo]
+          }
+          return [...todos.slice(0, toUpdateIndex), value.data.onUpdateTodo, ...todos.slice(toUpdateIndex + 1)]
+        })
+      }
+    })
+
+    const deleteSub = API.graphql(graphqlOperation(onDeleteTodo)).subscribe({
+      next: ({ value }) => {
+        setTodos(todos => {
+          const toDeleteIndex = todos.findIndex(item => item.id === value.data.onDeleteTodo.id)
+          return [...todos.slice(0, toDeleteIndex), ...todos.slice(toDeleteIndex + 1)]
+        })
+      }
+    })
+
+    return () => {
+      createSub.unsubscribe()
+      updateSub.unsubscribe()
+      deleteSub.unsubscribe()
+    }
   }, [])
 
   function setInput(key, value) {
@@ -32,7 +63,6 @@ function App({signOut, user}) {
     try {
       if (!formState.name || !formState.description) return
       const todo = { ...formState }
-      setTodos([...todos, todo])
       setFormState(initialState)
       await API.graphql(graphqlOperation(createTodo, {input: todo}))
     } catch (err) {
@@ -41,17 +71,9 @@ function App({signOut, user}) {
   }
   async function deleteTodos(todo) {
     try {  
-      await API.graphql(graphqlOperation(deleteTodo, {input: { id: todo.id }}))      
+      await API.graphql(graphqlOperation(deleteTodo, {input: { id: todo.id }}))    
     } catch (err) {
       console.log('error deleting todo:', err)
-    }
-  }
-
-  async function updateTodos(todo) {
-    try {  
-      await API.graphql(graphqlOperation(updateTodo, {input: { id: todo.id }}))      
-    } catch (err) {
-      console.log('error update todo:', err)
     }
   }
 
@@ -78,11 +100,13 @@ function App({signOut, user}) {
     <TextField
       placeholder="Name"
       onChange={event => setInput('name', event.target.value)}
+      descriptiveText="Enter name"
       style={styles.input}
       defaultValue={formState.name}
     />
     <TextField
       placeholder="Description"
+      descriptiveText="Enter description"
       onChange={event => setInput('description', event.target.value)}
       style={styles.input}
       defaultValue={formState.description}
@@ -92,8 +116,10 @@ function App({signOut, user}) {
     {
       todos.map((todo, index) => (
         <View key={todo.id ? todo.id : index} style={styles.todo}>
-          <Text style={styles.todoName}>{todo.name}</Text>
-          <Text style={styles.todoDescription}>{todo.description}</Text>
+          <View>
+            <Text style={styles.todoName}>{todo.name}</Text>
+            <Text style={styles.todoDescription} isTruncated={true}>{todo.description}</Text>
+          </View>
           <Button style={styles.button} onClick={() => deleteTodos(todo)}>Delete Todo</Button>
         </View>
       ))
@@ -105,8 +131,8 @@ function App({signOut, user}) {
 const styles = {
   heading: {display: 'flex', justifyContent: 'space-between', alignItems: 'center'},
   container: { width: 600, margin: '0 auto', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: 20 },
-  todo: {  marginBottom: 15},
-  input: { border: 'none', backgroundColor: '#ddd', marginBottom: 10, padding: 8, fontSize: 18 },
+  todo: {  marginTop: 15, marginBottom: 15, padding: '0 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#F5F8FD'},
+  input: { border: 'none', backgroundColor: '#F5F8FD', marginBottom: 10, padding: 8, fontSize: 18 },
   todoName: { fontSize: 20, fontWeight: 'bold' },
   todoDescription: { marginBottom: 0 },
   button: { backgroundColor: 'black', color: 'white', outline: 'none', fontSize: 12, padding: '12px 6px' }
